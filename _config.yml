@@ -1,0 +1,16 @@
+# GitHub Pages 설정: main 브랜치에서 바로 배포(Settings → Pages → Deploy from a branch → main / root)
+title: SK바이오팜 Codex 실습 Skill
+description: 강사 레포의 Skill 목록과 설치 프롬프트
+
+# skills/ 아래 SKILL.md는 Skill 상세 화면으로 만든다
+defaults:
+  - scope:
+      path: "skills"
+    values:
+      layout: skill
+
+# 실습 데이터의 라이브러리는 그대로 내려받게 두고, 시연용 예제는 페이지로 만들지 않는다
+exclude:
+  - examples
+  - README.md
+  - AGENTS.md

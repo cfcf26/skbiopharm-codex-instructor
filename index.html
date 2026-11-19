@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex 실습 Skill 모음</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="wrap">
+  <p class="eyebrow">SK바이오팜 Codex + GitHub 과정</p>
+  <h1>Codex 실습 Skill 모음</h1>
+  <p class="lead">설치할 Skill의 <b>설치 프롬프트 복사</b>를 눌러 Codex에 붙여 넣습니다. 이 레포 폴더를 Codex에서 연 상태에서 요청합니다.</p>
+  <p class="notice" id="mode"></p>
+
+  <h2>강사가 준비한 Skill</h2>
+  <div class="grid" id="base"></div>
+
+  <h2>수강생이 올린 Skill <span class="count" id="count"></span></h2>
+  <p class="muted" id="people-help">Branch와 PR 실습에서 각자 <code>skills/[내 이름]</code> 폴더에 올린 Skill이 강사의 Merge 뒤에 여기에 모입니다.</p>
+  <div class="grid" id="people"></div>
+
+  <h2>실습 데이터</h2>
+  <p class="muted"><code>data</code> 폴더에 대시보드 실습용 가상 엑셀 5종과 엑셀을 읽는 라이브러리(<code>data/lib/xlsx.full.min.js</code>)가 있습니다.</p>
+</main>
+
+<template id="card">
+  <article class="card">
+    <h3><a class="title"></a></h3>
+    <p class="desc"></p>
+    <p class="owner"></p>
+    <div class="install-head"><span>설치 프롬프트</span><button class="copy" type="button">설치 프롬프트 복사</button></div>
+    <pre class="prompt"></pre>
+  </article>
+</template>
+
+<script src="skills-local.js"></script>
+<script src="assets/copy.js"></script>
+<script>
+(function () {
+  var onPages = /^https?:$/.test(location.protocol);
+  function render(list, fromPages) {
+    /* 같은 Skill이 페이지와 원본 파일로 두 번 들어오면 페이지(.html) 쪽만 남긴다 */
+    var byDir = {};
+    list.forEach(function (s) { var o = byDir[s.dir]; if (!o || (/\.html$/.test(s.url || '') && !/\.html$/.test(o.url || ''))) byDir[s.dir] = s; });
+    list = Object.keys(byDir).map(function (k) { return byDir[k]; });
+    var base = document.getElementById('base'), people = document.getElementById('people'), tpl = document.getElementById('card');
+    var nPeople = 0;
+    var baseDirs = (window.LOCAL_SKILLS || []).map(function (s) { return s.dir; });
+    list.sort(function (a, b) { return a.dir.localeCompare(b.dir, 'ko'); }).forEach(function (s) {
+      var parts = s.dir.split('/');
+      var el = tpl.content.firstElementChild.cloneNode(true);
+      var a = el.querySelector('.title');
+      a.textContent = s.title || parts[parts.length - 1];
+      a.href = fromPages && s.url ? s.url : s.dir + '/SKILL.md';
+      el.querySelector('.desc').textContent = s.description || '설명이 없습니다. SKILL.md 맨 위에 description을 적어 주세요.';
+      el.querySelector('.prompt').textContent = '이 레포의 ' + s.dir + ' 폴더를 내 사용자 Skill 폴더(%USERPROFILE%\\.agents\\skills)에 복사해서 설치해줘.';
+      if (baseDirs.indexOf(s.dir) < 0) { el.querySelector('.owner').textContent = '올린 사람 폴더: ' + parts[1]; people.appendChild(el); nPeople++; }
+      else { el.querySelector('.owner').remove(); base.appendChild(el); }
+    });
+    document.getElementById('count').textContent = fromPages ? nPeople + '개' : '';
+    if (!nPeople) people.innerHTML = '<p class="empty">' + (fromPages ? '아직 Merge된 수강생 Skill이 없습니다.' : '내 PC에서 파일로 열면 수강생 Skill은 보이지 않습니다. GitHub Pages 주소로 열어 주세요.') + '</p>';
+    document.getElementById('mode').textContent = fromPages
+      ? 'GitHub Pages에서 보고 있습니다. main에 Merge된 Skill이 자동으로 모입니다.'
+      : '내 PC에서 파일로 보고 있습니다. 강사가 준비한 Skill만 보입니다.';
+  }
+  if (onPages) {
+    fetch('skills.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (list) { render(list, true); })
+      .catch(function () { render((window.LOCAL_SKILLS || []).slice(), false); });
+  } else {
+    render((window.LOCAL_SKILLS || []).slice(), false);
+  }
+})();
+</script>
+</body>
+</html>

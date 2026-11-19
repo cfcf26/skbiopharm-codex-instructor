@@ -1,0 +1,22 @@
+---
+layout: null
+permalink: /skills.json
+---
+{%- assign out = "" -%}
+[
+{%- assign first = true -%}
+{%- for p in site.pages -%}
+  {%- assign parts = p.path | split: "/" -%}
+  {%- if parts.first == "skills" and parts.last == "SKILL.md" -%}
+    {%- unless first -%},{%- endunless -%}{%- assign first = false -%}
+    {"dir": {{ p.path | remove: "/SKILL.md" | jsonify }}, "title": {{ p.title | default: parts[-2] | jsonify }}, "description": {{ p.description | default: "" | jsonify }}, "url": {{ p.url | relative_url | jsonify }}}
+  {%- endif -%}
+{%- endfor -%}
+{%- for f in site.static_files -%}
+  {%- assign parts = f.path | remove_first: "/" | split: "/" -%}
+  {%- if parts.first == "skills" and f.name == "SKILL.md" -%}
+    {%- unless first -%},{%- endunless -%}{%- assign first = false -%}
+    {"dir": {{ f.path | remove_first: "/" | remove: "/SKILL.md" | jsonify }}, "title": {{ parts[-2] | jsonify }}, "description": "", "url": {{ f.path | relative_url | jsonify }}}
+  {%- endif -%}
+{%- endfor -%}
+]
