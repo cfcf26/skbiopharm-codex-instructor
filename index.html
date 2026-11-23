@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Codex 실습 Skill 모음</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -10,14 +11,14 @@
 <main class="wrap">
   <p class="eyebrow">SK바이오팜 Codex + GitHub 과정</p>
   <h1>Codex 실습 Skill 모음</h1>
-  <p class="lead">설치할 Skill의 <b>설치 프롬프트 복사</b>를 눌러 Codex에 붙여 넣습니다. 이 레포 폴더를 Codex에서 연 상태에서 요청합니다.</p>
+  <p class="lead">설치할 Skill의 <b>설치 프롬프트 복사</b>를 눌러 Codex에 붙여 넣습니다. 이 레포 폴더를 Codex 프로젝트에 추가한 대화에서 요청합니다.</p>
   <p class="notice" id="mode"></p>
 
   <h2>강사가 준비한 Skill</h2>
   <div class="grid" id="base"></div>
 
   <h2>수강생이 올린 Skill <span class="count" id="count"></span></h2>
-  <p class="muted" id="people-help">Branch와 PR 실습에서 각자 <code>skills/[내 이름]</code> 폴더에 올린 Skill이 강사의 Merge 뒤에 여기에 모입니다.</p>
+  <p class="muted" id="people-help">Branch와 PR 실습에서 각자 <code>skills/[내 GitHub 아이디]</code> 폴더에 올린 Skill이 강사의 Merge 뒤에 여기에 모입니다.</p>
   <div class="grid" id="people"></div>
 
   <h2>실습 데이터</h2>
@@ -54,7 +55,10 @@
       a.textContent = s.title || parts[parts.length - 1];
       a.href = fromPages && s.url ? s.url : s.dir + '/SKILL.md';
       el.querySelector('.desc').textContent = s.description || '설명이 없습니다. SKILL.md 맨 위에 description을 적어 주세요.';
-      el.querySelector('.prompt').textContent = '이 레포의 ' + s.dir + ' 폴더를 내 사용자 Skill 폴더(%USERPROFILE%\\.agents\\skills)에 복사해서 설치해줘.';
+      /* 폴더 경로는 수강생이 정하므로, 허용한 문자로만 된 경로일 때만 설치 프롬프트를 만든다 */
+      var safe = /^skills(\/[A-Za-z0-9가-힣._-]{1,64}){1,3}$/.test(s.dir) && s.dir.indexOf('..') < 0;
+      if (safe) el.querySelector('.prompt').textContent = '이 레포의 `' + s.dir + '` 폴더를 내 사용자 Skill 폴더(%USERPROFILE%\\.agents\\skills)에 복사해서 설치해줘.';
+      else { el.querySelector('.prompt').textContent = '폴더 이름에 쓸 수 없는 문자가 있어 설치 프롬프트를 만들지 않았습니다. 강사에게 알려 주세요.'; el.querySelector('.copy').remove(); }
       if (baseDirs.indexOf(s.dir) < 0) { el.querySelector('.owner').textContent = '올린 사람 폴더: ' + parts[1]; people.appendChild(el); nPeople++; }
       else { el.querySelector('.owner').remove(); base.appendChild(el); }
     });
