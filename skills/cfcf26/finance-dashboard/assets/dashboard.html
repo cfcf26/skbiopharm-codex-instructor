@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>예산 집행 대시보드</title>
+<style>
+  :root { color-scheme: light; font-family: system-ui, "Malgun Gothic", sans-serif; color: #17263b; background: #edf2f7; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  header { background: #132741; color: white; padding: 36px 0 56px; }
+  .wrap { width: min(1320px, calc(100% - 40px)); margin-inline: auto; }
+  h1 { font-size: clamp(1.85rem, 4.3vw, 2.8rem); margin: 0 0 8px; letter-spacing: -.05em; }
+  h2 { font-size: 1.125rem; margin: 0; }
+  p { margin: 0; }
+  .sample-data { display: inline-block; margin-bottom: 8px; padding: 4px 10px; border-radius: 6px; background: #ffdf91; color: #372400; font-size: .875rem; font-weight: 700; }
+  #source { color: #c3d3e8; }
+  main { display: grid; gap: 16px; padding-bottom: 36px; position: relative; margin-top: -28px; }
+  .panel, .card { background: white; border: 1px solid #dbe4ef; border-radius: 14px; padding: 20px; min-width: 0; }
+  .filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+  .filters label { display: grid; gap: 5px; font-weight: 650; font-size: .875rem; flex: 1 1 145px; }
+  select, button, .filters .upload { font: inherit; border: 1px solid #bfcddd; border-radius: 8px; background: white; color: #17263b; padding: 9px 12px; min-height: 42px; }
+  select { width: 100%; }
+  button, .upload { cursor: pointer; }
+  .filters .upload { position: relative; display: inline-grid; place-items: center; flex: 0 0 auto; background: #183b62; color: white; }
+  .upload input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+  :focus-visible, .upload:focus-within { outline: 3px solid #3689e5; outline-offset: 2px; }
+  .cards, .charts { display: grid; gap: 16px; }
+  .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .charts { grid-template-columns: 1.24fr 1fr; }
+  .card strong { display: block; font-size: clamp(1.15rem, 2.3vw, 2rem); font-variant-numeric: tabular-nums; letter-spacing: -.05em; margin-top: 6px; overflow-wrap: anywhere; }
+  .card:last-child { border-top: 3px solid #087e76; }
+  .muted { color: #52657d; font-size: .875rem; }
+  .warning { color: #a12734; }
+  .overruns { border-top: 4px solid #a12734; }
+  .overruns .table-scroll { max-height: 310px; }
+  .overruns th:nth-child(3), .overruns td:nth-child(3) { text-align: right; }
+  .overruns td:last-child { color: #a12734; font-weight: 700; }
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; background: #9abce7; }
+  .legend span:last-child::before { background: #087e76; }
+  .plot { display: grid; gap: 9px; }
+  .group { display: grid; grid-template-columns: minmax(60px, 6em) 1fr; align-items: center; gap: 9px; font-size: .875rem; }
+  .tracks { display: grid; gap: 3px; }
+  .track { position: relative; background: #eef3f8; height: 9px; border-radius: 3px; }
+  .bar { position: absolute; height: 100%; border-radius: inherit; background: #9abce7; }
+  .track:last-child .bar { background: #087e76; }
+  .table-scroll { max-height: 450px; overflow: auto; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .875rem; white-space: nowrap; }
+  th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid #e5ecf4; }
+  th { position: sticky; top: 0; background: #edf3fa; z-index: 1; }
+  td:nth-child(n+4), th:nth-child(n+4) { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:nth-child(even) { background: #f7f9fc; }
+  #message:empty { display: none; }
+  @media (max-width: 920px) { .charts { grid-template-columns: 1fr; } .cards { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .wrap { width: calc(100% - 24px); } .panel, .card { padding: 14px; } }
+</style>
+<script src="./lib/xlsx.full.min.js"></script>
+</head>
+<body>
+<header><div class="wrap">
+  __SAMPLE_LABEL__
+  <h1>예산 집행 대시보드</h1>
+  <p id="source" aria-live="polite">데이터 불러오는 중</p>
+</div></header>
+<main class="wrap">
+  <section class="panel overruns" aria-labelledby="overrun-title">
+    <div class="section-head">
+      <h2 id="overrun-title">예산 초과 부서·대분류</h2>
+      <span class="muted" id="overrun-scope" role="status">데이터 불러오는 중</span>
+    </div>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="예산 초과 표">
+      <table>
+        <thead><tr><th scope="col">부서</th><th scope="col">계정 대분류</th><th scope="col">예산 (억 원)</th><th scope="col">집행액 (억 원)</th><th scope="col">초과 금액 (억 원)</th></tr></thead>
+        <tbody id="overrun-details"></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="panel filters" aria-label="집행 내역 필터">
+    <label>부서<select id="department"><option value="">전체</option></select></label>
+    <label>계정 대분류<select id="category"><option value="">전체</option></select></label>
+    <label>월<select id="month"><option value="">전체</option></select></label>
+    <button id="reset" type="button">필터 초기화</button>
+    <label class="upload">엑셀 파일 열기<input id="file" type="file" accept=".xlsx" aria-label="엑셀 파일 열기"></label>
+  </section>
+  <p id="message" class="warning" role="alert"></p>
+  <section class="cards" aria-label="핵심 숫자" aria-live="polite">
+    <div class="card"><span class="muted">총예산 (억 원)</span><strong id="budget">—</strong></div>
+    <div class="card"><span class="muted">총집행액 (억 원)</span><strong id="spent">—</strong></div>
+    <div class="card"><span class="muted">예산 잔액 (억 원)</span><strong id="balance">—</strong></div>
+    <div class="card"><span class="muted">집행률</span><strong id="rate">—</strong></div>
+  </section>
+  <section class="charts" aria-label="예산과 집행액 차트">
+    <div class="panel">
+      <div class="section-head"><h2>월별 예산과 집행액</h2></div>
+      <div class="legend muted"><span>예산</span><span>집행액</span></div>
+      <div class="plot" id="monthly"></div>
+    </div>
+    <div class="panel">
+      <div class="section-head"><h2>계정 대분류별 예산과 집행액</h2></div>
+      <div class="legend muted"><span>예산</span><span>집행액</span></div>
+      <div class="plot" id="categories"></div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><h2>집행 상세</h2><span class="muted" id="count" role="status"></span></div>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="집행 상세 표">
+      <table>
+        <thead><tr><th scope="col">월</th><th scope="col">부서</th><th scope="col">계정 대분류</th><th scope="col">예산 (억 원)</th><th scope="col">집행액 (억 원)</th><th scope="col">잔액 (억 원)</th><th scope="col">집행률</th></tr></thead>
+        <tbody id="details"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<!-- Original workbook bytes for offline opening, parsed by SheetJS at runtime. -->
+<script id="workbook" type="application/octet-stream">__WORKBOOK_BASE64__</script>
+<script>
+  const get = id => document.getElementById(id);
+  const number = new Intl.NumberFormat('ko-KR');
+  const wonPerUnit = 100_000_000;
+  const decimal = new Intl.NumberFormat('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+  const money = won => decimal.format(won / wonPerUnit);
+  const percent = new Intl.NumberFormat('ko-KR', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const rate = ({ budget, spent }) => budget === 0 ? '—' : percent.format(spent / budget);
+  const compare = (a, b) => a.localeCompare(b, 'ko');
+  const fields = ['department', 'category', 'month'];
+  const categories = new Set(['인건비', '경비', '외주비', '마케팅비']);
+  const filename = __WORKBOOK_FILENAME__;
+  let rows = [];
+
+  function element(tag, content, className) {
+    const node = document.createElement(tag);
+    node.textContent = content;
+    if (className) node.className = className;
+    return node;
+  }
+
+  function populate(field, source) {
+    const select = get(field);
+    const selected = select.value;
+    const values = [...new Set(source.map(row => row[field]))].sort(compare);
+    select.replaceChildren(new Option('전체', ''), ...values.map(value => new Option(value, value)));
+    select.value = values.includes(selected) ? selected : '';
+  }
+
+  function addAmounts(total, row) {
+    total.budget += row.budget;
+    total.spent += row.spent;
+    return total;
+  }
+
+  function chart(id, selected, field) {
+    const plot = get(id);
+    const groups = new Map();
+    for (const row of selected) {
+      if (!groups.has(row[field])) groups.set(row[field], { budget: 0, spent: 0 });
+      addAmounts(groups.get(row[field]), row);
+    }
+    if (!groups.size) {
+      plot.replaceChildren(element('p', '표시할 데이터가 없습니다.', 'muted'));
+      return;
+    }
+    const amounts = [...groups.values()].flatMap(({ budget, spent }) => [budget, spent]);
+    const min = Math.min(0, ...amounts);
+    const span = Math.max(0, ...amounts) - min || 1;
+    const zero = -min / span * 100;
+    const bars = [...groups].sort(([a], [b]) => compare(a, b)).map(([label, { budget, spent }]) => {
+      const group = element('div', '', 'group');
+      const tracks = element('div', '', 'tracks');
+      const description = label + ' 예산 ' + money(budget) + '억 원, 집행액 ' + money(spent) + '억 원';
+      group.title = description;
+      group.setAttribute('role', 'img');
+      group.setAttribute('aria-label', description);
+      for (const value of [budget, spent]) {
+        const track = element('div', '', 'track');
+        const bar = element('div', '', 'bar');
+        bar.style.left = Math.min(zero, (value - min) / span * 100) + '%';
+        bar.style.width = Math.abs(value) / span * 100 + '%';
+        track.append(bar);
+        tracks.append(track);
+      }
+      group.append(element('span', label), tracks);
+      return group;
+    });
+    plot.replaceChildren(...bars);
+  }
+
+  function tableRow(values) {
+    const tr = document.createElement('tr');
+    for (const value of values) tr.append(element('td', value));
+    return tr;
+  }
+
+  function emptyRow(message, columns) {
+    const tr = tableRow([message]);
+    tr.firstElementChild.colSpan = columns;
+    return tr;
+  }
+
+  function renderOverruns(selected) {
+    const groups = new Map();
+    for (const row of selected) {
+      const key = JSON.stringify([row.department, row.category]);
+      if (!groups.has(key)) groups.set(key, { department: row.department, category: row.category, budget: 0, spent: 0 });
+      addAmounts(groups.get(key), row);
+    }
+    const overruns = [...groups.values()]
+      .map(group => ({ ...group, excess: group.spent - group.budget }))
+      .filter(group => group.excess > 0)
+      .sort((a, b) => b.excess - a.excess || compare(a.department, b.department) || compare(a.category, b.category));
+    const period = get('month').value || '전체 월 합계';
+    get('overrun-scope').textContent = period + ' · ' + number.format(overruns.length) + '개 부서·대분류';
+    const details = overruns.map(({ department, category, budget, spent, excess }) =>
+      tableRow([department, category, money(budget), money(spent), money(excess)]));
+    if (!details.length) {
+      details.push(emptyRow(selected.length ? '예산을 초과한 부서·대분류가 없습니다.' : '선택한 조건에 해당하는 내역이 없습니다.', 5));
+    }
+    get('overrun-details').replaceChildren(...details);
+  }
+
+  function render() {
+    const filters = fields.map(field => [field, get(field).value]);
+    const selected = rows.filter(row => filters.every(([field, value]) => !value || row[field] === value));
+    const total = selected.reduce(addAmounts, { budget: 0, spent: 0 });
+    const balance = total.budget - total.spent;
+    get('budget').textContent = money(total.budget);
+    get('spent').textContent = money(total.spent);
+    get('balance').textContent = money(balance);
+    get('balance').classList.toggle('warning', balance < 0);
+    get('rate').textContent = rate(total);
+    get('count').textContent = number.format(selected.length) + '건 / 전체 ' + number.format(rows.length) + '건';
+    renderOverruns(selected);
+    chart('monthly', selected, 'month');
+    chart('categories', selected, 'category');
+    const details = selected.map(row => tableRow([row.month, row.department, row.category, money(row.budget),
+      money(row.spent), money(row.budget - row.spent), rate(row)]));
+    if (!details.length) details.push(emptyRow('선택한 조건에 해당하는 내역이 없습니다.', 7));
+    get('details').replaceChildren(...details);
+  }
+
+  function loadWorkbook(bytes, type, name) {
+    if (!window.XLSX) throw new Error('lib 폴더에서 xlsx.full.min.js를 찾을 수 없습니다.');
+    const workbook = XLSX.read(bytes, { type });
+    const sheet = workbook.Sheets['데이터'];
+    if (!sheet) throw new Error('데이터 시트를 찾을 수 없습니다.');
+    const [headers = [], ...records] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, blankrows: false });
+    const indices = ['부서', '계정 대분류', '월', '예산 (억 원)', '집행액 (억 원)'].map(label => headers.indexOf(label));
+    if (indices.includes(-1)) throw new Error('부서, 계정 대분류, 월, 예산 (억 원), 집행액 (억 원) 열이 필요합니다.');
+    rows = records.map((record, index) => {
+      const [department, category, month, budget, spent] = indices.map(column => record[column]);
+      if (![department, month].every(value => typeof value === 'string' && value.trim())
+          || !categories.has(category) || !Number.isFinite(budget) || !Number.isFinite(spent)) {
+        throw new Error('데이터 시트의 ' + (index + 2) + '번째 행을 확인해 주세요.');
+      }
+      return { department, category, month, budget: Math.round(budget * wonPerUnit), spent: Math.round(spent * wonPerUnit) };
+    }).sort((a, b) => compare(a.month, b.month) || compare(a.department, b.department) || compare(a.category, b.category));
+    const months = [...new Set(rows.map(row => row.month))];
+    const period = months.length > 1 ? months[0] + ' ~ ' + months.at(-1) : months[0];
+    get('source').textContent = period ? name + ' · ' + period : name;
+    get('message').textContent = '';
+    for (const field of fields) {
+      get(field).value = '';
+      populate(field, rows);
+    }
+    render();
+  }
+
+  for (const field of fields) get(field).addEventListener('change', render);
+  get('reset').addEventListener('click', () => {
+    for (const field of fields) get(field).value = '';
+    render();
+  });
+  get('file').addEventListener('change', async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      loadWorkbook(await file.arrayBuffer(), 'array', file.name);
+      document.querySelector('.sample-data')?.remove();
+    } catch (error) {
+      get('message').textContent = '파일을 열 수 없습니다. ' + error.message;
+    } finally {
+      event.target.value = '';
+    }
+  });
+  function openDefault() {
+    try {
+      loadWorkbook(get('workbook').textContent.trim(), 'base64', filename);
+    } catch (error) {
+      get('source').textContent = filename;
+      get('message').textContent = '파일을 열 수 없습니다. ' + error.message;
+    }
+  }
+  openDefault();
+</script>
+</body>
+</html>
