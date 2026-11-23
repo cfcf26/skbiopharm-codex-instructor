@@ -3,19 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 {%- assign parts = page.path | split: "/" -%}
 {%- assign dir = page.path | remove: "/SKILL.md" -%}
-<title>{{ page.title | default: parts[-2] }} · Skill</title>
+<title>{{ page.title | default: parts[-2] | escape }} · Skill</title>
 <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
 </head>
 <body>
 <main class="wrap">
   <p class="crumb"><a href="{{ '/' | relative_url }}">← Skill 목록</a></p>
-  <h1>{{ page.title | default: parts[-2] }}</h1>
-  {%- if page.description %}<p class="lead">{{ page.description }}</p>{% endif %}
+  <h1>{{ page.title | default: parts[-2] | escape }}</h1>
+  {%- if page.description %}<p class="lead">{{ page.description | escape }}</p>{% endif %}
+  {%- assign bad = false -%}
+  {%- if dir contains " " or dir contains "`" or dir contains ".." or dir contains "\\" -%}{%- assign bad = true -%}{%- endif -%}
   <section class="install">
-    <div class="install-head"><span>Codex에 입력할 설치 프롬프트</span><button class="copy" type="button">복사</button></div>
-    <pre class="prompt">이 레포의 {{ dir }} 폴더를 내 사용자 Skill 폴더(%USERPROFILE%\.agents\skills)에 복사해서 설치해줘.</pre>
+    <div class="install-head"><span>Codex에 입력할 설치 프롬프트</span>{% unless bad %}<button class="copy" type="button">복사</button>{% endunless %}</div>
+    {%- if bad %}
+    <p class="lead">폴더 이름에 쓸 수 없는 문자가 있어 설치 프롬프트를 만들지 않았습니다. 강사에게 알려 주세요.</p>
+    {%- else %}
+    <pre class="prompt">이 레포의 `{{ dir | escape }}` 폴더를 내 사용자 Skill 폴더(%USERPROFILE%\.agents\skills)에 복사해서 설치해줘.</pre>
+    {%- endif %}
   </section>
   <article class="skill-body">{{ content }}</article>
 </main>
